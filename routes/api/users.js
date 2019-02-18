@@ -4,6 +4,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const passport = require('passport');
 const keys = require('../../config/keys');
+const axios = require('axios');
 
 const router = express.Router();
 
@@ -60,6 +61,14 @@ router.post('/register', (req, res) => {
                 .catch(error => console.log(error));
             });
           });
+
+          axios
+            .post('http://localhost:7000/send-welcome', {
+              name: req.body.name,
+              email: req.body.email
+            })
+            .then(res => console.log(res))
+            .catch(err => console.log(err));
         })
         .catch(err => res.status(500).json(err));
     }
