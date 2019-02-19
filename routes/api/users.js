@@ -63,7 +63,7 @@ router.post('/register', (req, res) => {
           });
 
           axios
-            .post('http://localhost:7000/send-welcome', {
+            .post('http://localhost:8000/send-welcome', {
               name: req.body.name,
               email: req.body.email
             })
@@ -130,14 +130,18 @@ router.post('/login', (req, res) => {
 // @desc    Return current user
 // @access  Private
 router.get(
-  '/current',
+  '/',
   passport.authenticate('jwt', { session: false }),
   (req, res) => {
-    res.json({
-      id: req.user.id,
-      name: req.user.name,
-      email: req.user.email
-    });
+    User.findOne({ handle: req.user.handle })
+      .then(user => {
+        if (!user) {
+          errors.nouser = 'There is no user for that handle';
+          return res.status(404).json(errors);
+        }
+        res.json(user);
+      })
+      .catch(err => res.status(404).json(err));
   }
 );
 
