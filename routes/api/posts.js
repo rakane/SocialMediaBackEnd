@@ -31,7 +31,10 @@ router.post(
       text: req.body.text
     });
 
-    newPost.save().then(post => res.json(post));
+    newPost
+      .save()
+      .then(post => res.json(post))
+      .catch(err => console.log(err));
   }
 );
 
@@ -194,5 +197,14 @@ router.delete(
       .catch(err => res.status(404).json({ postnotfound: 'No post found' }));
   }
 );
+
+// @route   GET api/posts/:handle/posts
+// @desc    Get all posts of a user
+// @access  Public
+router.get('/:handle/posts', (req, res) => {
+  Post.find({ handle: req.params.handle })
+    .then(posts => res.json(posts))
+    .catch(err => res.status(400).json(err));
+});
 
 module.exports = router;

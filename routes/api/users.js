@@ -34,43 +34,47 @@ router.post('/register', (req, res) => {
       errors.email = 'Email already exists';
       return res.status(400).json(errors);
     } else {
-      User.findOne({ handle: req.body.handle })
-        .then(user => {
-          if (user) {
-            errors.handle = 'Handle already exists';
-            return res.status(400).json(errors);
-          }
-          const newUser = new User({
+      User.findOne({ handle: req.body.handle }).then(user => {
+        if (user) {
+          errors.handle = 'Handle already exists';
+          return res.status(400).json(errors);
+        }
+        const newUser = new User({
+          name: req.body.name,
+          handle: req.body.handle,
+          email: req.body.email,
+          password: req.body.password,
+          website: req.body.website,
+          location: req.body.location,
+          bio: req.body.bio,
+          youtube: req.body.youtube,
+          twitter: req.body.twitter,
+          facebook: req.body.facebook,
+          linkedin: req.body.linkedin,
+          instagram: req.body.instagram
+        });
+
+        bcrypt.genSalt(10, (err, salt) => {
+          bcrypt.hash(newUser.password, salt, (err, hash) => {
+            if (err) throw err;
+            newUser.password = hash;
+            newUser
+              .save()
+              .then(usr => res.json(usr))
+              .catch(error => console.log(error));
+          });
+        });
+
+        /*
+        axios
+          .post('http://localhost:8000/send-welcome', {
             name: req.body.name,
-            handle: req.body.handle,
-            email: req.body.email,
-            password: req.body.password,
-            website: req.body.website,
-            location: req.body.location,
-            bio: req.body.bio,
-            social: req.body.social
-          });
-
-          bcrypt.genSalt(10, (err, salt) => {
-            bcrypt.hash(newUser.password, salt, (err, hash) => {
-              if (err) throw err;
-              newUser.password = hash;
-              newUser
-                .save()
-                .then(usr => res.json(usr))
-                .catch(error => console.log(error));
-            });
-          });
-
-          axios
-            .post('http://localhost:8000/send-welcome', {
-              name: req.body.name,
-              email: req.body.email
-            })
-            .then(res => console.log(res))
-            .catch(err => console.log(err));
-        })
-        .catch(err => res.status(500).json(err));
+            email: req.body.email
+          })
+          .then(res => console.log(res))
+          .catch(err => console.log(err));
+          */
+      });
     }
   });
 });
@@ -106,7 +110,7 @@ router.post('/login', (req, res) => {
           name: user.name,
           handle: user.handle
         };
-        //Sign Token
+        // Sign Token
         jwt.sign(
           payload,
           keys.secretOrKey,
@@ -130,7 +134,7 @@ router.post('/login', (req, res) => {
 // @desc    Return current user
 // @access  Private
 router.get(
-  '/',
+  '/current',
   passport.authenticate('jwt', { session: false }),
   (req, res) => {
     User.findOne({ handle: req.user.handle })
@@ -160,5 +164,110 @@ router.get('/handle/:handle', (req, res) => {
     })
     .catch(err => res.status(500).json(err));
 });
+
+// @route   POST api/users/update
+// @desc    Update User profile
+// @access  Private
+router.post(
+  '/update',
+  passport.authenticate('jwt', { session: false }),
+  (req, res) => {
+    const profileFields = {};
+    if (req.body.website) profileFields.website = req.body.website;
+    if (req.body.location) profileFields.location = req.body.location;
+    if (req.body.bio) profileFields.bio = req.body.bio;
+    if (req.body.twitter) profileFields.twiiter = req.body.twiiter;
+    if (req.body.facebook) profileFields.facebook = req.body.facebook;
+    if (req.body.linkedin) profileFields.linkedin = req.body.linkedin;
+    if (req.body.instagram) profileFields.instagram = req.body.instagram;
+
+    User.findOne({ handle: req.user.handle }).then(user => {
+      if (user) {
+        // Update Profile
+        User.findOneAndUpdate(
+          { handle: req.user.handle },
+          { $set: profileFields },
+          { new: true }
+        ).then(user => res.json(user));
+      }
+    });
+  }
+);
+
+// @route   POST api/users/follow/
+// @desc    Follow user
+// @access  Private
+router.post(
+  '/follow',
+  passport.authenticate('jwt', { session: false }),
+  (req, res) => {
+    // Find Authenticated User
+    User.findOne({ handle: req.user.handle })
+      .then(authUser => {
+        const newFollowing = {
+          handle: req.body.handle,
+          name: req.body.name
+        };
+        // Add to following
+        authUser.following.unshift(newFollowing);
+        // Save
+        authUser.save().then(authUser => res.json(authUser));
+      })
+      .catch(err => res.status(400).json(err));
+
+    //Find user to follow
+    User.findOne({ handle: req.body.handle })
+      .then(targetUser => {
+        const newFollower = {
+          handle: req.user.handle,
+          name: req.user.name
+        };
+        // Add auth user to followers of target user
+        targetUser.followers.unshift(newFollower);
+        // Save
+        targetUser.save().then(targetUser => console.log(targetUser));
+      })
+      .catch(err => res.status(400).json(err));
+  }
+);
+
+// @route   POST api/users/unfollow
+// @desc    Unfollow user
+// @access  Private
+router.post(
+  '/unfollow',
+  passport.authenticate('jwt', { session: false }),
+  (req, res) => {
+    // Find Authenticated User
+    User.findOne({ handle: req.user.handle })
+      .then(authUser => {
+        // Get remove index
+        const removeIndex = authUser.following
+          .map(user => user.handle.toString())
+          .indexOf(req.body.handle);
+
+        // Splice comment out of array
+        authUser.following.splice(removeIndex, 1);
+
+        authUser.save().then(user => res.json(user));
+      })
+      .catch(err => res.status(400).json(err));
+
+    //Find target user
+    User.findOne({ handle: req.body.handle })
+      .then(targetUser => {
+        // Get remove index
+        const removeIndex = targetUser.followers
+          .map(user => user.handle.toString())
+          .indexOf(req.user.handle);
+
+        // Splice comment out of array
+        targetUser.followers.splice(removeIndex, 1);
+
+        targetUser.save();
+      })
+      .catch(err => res.status(400).json(err));
+  }
+);
 
 module.exports = router;

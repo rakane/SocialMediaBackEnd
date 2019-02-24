@@ -33,23 +33,45 @@ const UserSchema = new Schema({
   bio: {
     type: String
   },
-  social: {
-    youtube: {
-      type: String
-    },
-    twitter: {
-      type: String
-    },
-    facebook: {
-      type: String
-    },
-    linkedin: {
-      type: String
-    },
-    instagram: {
-      type: String
+  youtube: {
+    type: String
+  },
+  twitter: {
+    type: String
+  },
+  facebook: {
+    type: String
+  },
+  linkedin: {
+    type: String
+  },
+  instagram: {
+    type: String
+  },
+  followers: [
+    {
+      handle: {
+        type: String,
+        required: true
+      },
+      name: {
+        type: String,
+        required: true
+      }
     }
-  }
+  ],
+  following: [
+    {
+      handle: {
+        type: String,
+        required: true
+      },
+      name: {
+        type: String,
+        required: true
+      }
+    }
+  ]
 });
 
 module.exports = User = mongoose.model('users', UserSchema);
