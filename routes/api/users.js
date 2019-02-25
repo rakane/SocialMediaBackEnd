@@ -5,8 +5,19 @@ const jwt = require('jsonwebtoken');
 const passport = require('passport');
 const keys = require('../../config/keys');
 const axios = require('axios');
+const cloudinary = require('cloudinary');
+const formData = require('express-form-data');
 
 const router = express.Router();
+
+router.use(formData.parse());
+
+//Cloudinary Config
+cloudinary.config({
+  cloud_name: keys.cloudname,
+  api_key: keys.CloudinaryAPI,
+  api_secret: keys.CloudinaryAPISecret
+});
 
 // Load User model
 const User = require('../../models/User');
@@ -64,7 +75,6 @@ router.post('/register', (req, res) => {
               .catch(error => console.log(error));
           });
         });
-
         /*
         axios
           .post('http://localhost:8000/send-welcome', {
@@ -77,6 +87,34 @@ router.post('/register', (req, res) => {
       });
     }
   });
+});
+
+// @route   POST api/users/upload-image
+// @desc    Upload profile image to cloudinary
+// @access  Public
+router.post('/upload-image', (req, res) => {
+  let uploadFile = req.files.file;
+  let fileName = req.files.file.name;
+
+  if (uploadFile !== undefined) {
+    cloudinary.v2.uploader.upload(
+      uploadFile.path,
+      {
+        width: 200,
+        height: 200,
+        crop: 'fit',
+        public_id: `profile/${fileName}`,
+        resource_type: 'image',
+        overwrite: true
+      },
+      function(error, result) {
+        if (error) {
+          res.status(400).json({ uploaded: false });
+        }
+        res.json({ uploaded: true });
+      }
+    );
+  }
 });
 
 // @route   POST api/users/login

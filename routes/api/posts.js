@@ -4,8 +4,17 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const passport = require('passport');
 const keys = require('../../config/keys');
+const cloudinary = require('cloudinary');
+const formData = require('express-form-data');
 
 const router = express.Router();
+
+//Cloudinary Config
+cloudinary.config({
+  cloud_name: keys.cloudname,
+  api_key: keys.CloudinaryAPI,
+  api_secret: keys.CloudinaryAPISecret
+});
 
 const validatePostInput = require('../../validation/post');
 
@@ -25,10 +34,36 @@ router.post(
       return res.status(400).json(errors);
     }
 
+    let uploadFile;
+    let fileName;
+
+    if (req.files !== undefined) {
+      uploadFile = req.files.file;
+      fileName = req.files.file.name;
+
+      cloudinary.v2.uploader.upload(
+        uploadFile.path,
+        {
+          public_id: `posts/${fileName}`,
+          resource_type: 'auto',
+          overwrite: true
+        },
+        function(error, result) {
+          if (error) {
+            res.status(400).json({ uploaded: false });
+          }
+          res.json({ uploaded: true });
+        }
+      );
+    }
+
     const newPost = new Post({
-      handle: req.body.handle,
-      name: req.body.name,
-      text: req.body.text
+      text: req.body.text,
+      media: fileName,
+      user: {
+        name: req.user.name,
+        handle: req.user.handle
+      }
     });
 
     newPost
@@ -49,18 +84,18 @@ router.get('/:id', (req, res) => {
     );
 });
 
-// @route   DELETE api/posts/:handle/:id
+// @route   DELETE api/posts/:id
 // @desc    Delete post
 // @access  Private
 router.delete(
   '/:handle/:id',
   passport.authenticate('jwt', { session: false }),
   (req, res) => {
-    User.findOne({ handle: req.params.handle }).then(user => {
+    User.findOne({ handle: req.user.handle }).then(user => {
       Post.findById(req.params.id)
         .then(post => {
           // Check for post owner
-          if (post.handle.toString() !== req.params.handle) {
+          if (post.handle.toString() !== req.user.handle) {
             return res
               .status(401)
               .json({ notauthorized: 'User not authorized' });
@@ -80,12 +115,12 @@ router.post(
   '/like/:id',
   passport.authenticate('jwt', { session: false }),
   (req, res) => {
-    User.findOne({ handle: req.body.handle }).then(user => {
+    User.findOne({ handle: req.user.handle }).then(user => {
       Post.findById(req.params.id)
         .then(post => {
           if (
             post.likes.filter(
-              like => like.handle.toString() === req.body.handle
+              like => like.handle.toString() === req.user.handle
             ).length > 0
           ) {
             return res
@@ -93,7 +128,7 @@ router.post(
               .json({ alreadyliked: 'User already liked this post' });
           }
 
-          post.likes.unshift({ handle: req.body.handle, name: req.body.name });
+          post.likes.unshift({ handle: req.user.handle, name: req.user.name });
           post.save().then(post => res.json(post));
         })
         .catch(err => res.status(404).json({ postnotfound: 'No post found' }));
@@ -108,12 +143,12 @@ router.post(
   '/unlike/:id',
   passport.authenticate('jwt', { session: false }),
   (req, res) => {
-    User.findOne({ handle: req.body.handle }).then(user => {
+    User.findOne({ handle: req.user.handle }).then(user => {
       Post.findById(req.params.id)
         .then(post => {
           if (
             post.likes.filter(
-              like => like.handle.toString() === req.body.handle
+              like => like.handle.toString() === req.user.handle
             ).length === 0
           ) {
             return res
@@ -123,7 +158,7 @@ router.post(
 
           const removeIndex = post.likes
             .map(item => item.handle.toString())
-            .indexOf(req.body.handle);
+            .indexOf(req.user.handle);
 
           post.likes.splice(removeIndex);
 
@@ -151,8 +186,8 @@ router.post(
       .then(post => {
         const newComment = {
           text: req.body.text,
-          name: req.body.name,
-          handle: req.body.handle
+          name: req.user.name,
+          handle: req.user.handle
         };
 
         // Add to comments array
@@ -202,7 +237,7 @@ router.delete(
 // @desc    Get all posts of a user
 // @access  Public
 router.get('/:handle/posts', (req, res) => {
-  Post.find({ handle: req.params.handle })
+  Post.find({ 'user.handle': req.params.handle })
     .then(posts => res.json(posts))
     .catch(err => res.status(400).json(err));
 });

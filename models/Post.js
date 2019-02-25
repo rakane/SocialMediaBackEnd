@@ -4,13 +4,18 @@ const { Schema } = mongoose;
 
 // Create Schema
 const PostSchema = new Schema({
-  handle: {
-    type: String,
-    required: true
+  user: {
+    handle: {
+      type: String,
+      required: true
+    },
+    name: {
+      type: String,
+      required: true
+    }
   },
-  name: {
-    type: String,
-    required: true
+  media: {
+    type: String
   },
   text: {
     type: String,
