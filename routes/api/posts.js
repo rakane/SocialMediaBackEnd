@@ -242,4 +242,25 @@ router.get('/:handle/posts', (req, res) => {
     .catch(err => res.status(400).json(err));
 });
 
+// @route   GET api/posts/all
+// @desc    Get all posts from users auth User is following
+// @access  Private
+router.get(
+  '/current/all',
+  passport.authenticate('jwt', { session: false }),
+  (req, res) => {
+    User.findOne({ handle: req.user.handle }).then(user => {
+      const { following } = user;
+      const handles = [];
+      following.map(user => {
+        handles.unshift(user.handle);
+      });
+
+      Post.find({ 'user.handle': { $in: handles } })
+        .then(posts => res.json(posts))
+        .catch(err => res.status(400).json(err));
+    });
+  }
+);
+
 module.exports = router;
