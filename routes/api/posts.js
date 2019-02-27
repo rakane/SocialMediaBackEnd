@@ -255,6 +255,7 @@ router.get(
       following.map(user => {
         handles.unshift(user.handle);
       });
+      handles.unshift(req.user.handle);
 
       Post.find({ 'user.handle': { $in: handles } })
         .then(posts => res.json(posts))
