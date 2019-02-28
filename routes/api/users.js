@@ -214,7 +214,7 @@ router.post(
     if (req.body.website) profileFields.website = req.body.website;
     if (req.body.location) profileFields.location = req.body.location;
     if (req.body.bio) profileFields.bio = req.body.bio;
-    if (req.body.twitter) profileFields.twiiter = req.body.twiiter;
+    if (req.body.twitter) profileFields.twitter = req.body.twitter;
     if (req.body.facebook) profileFields.facebook = req.body.facebook;
     if (req.body.linkedin) profileFields.linkedin = req.body.linkedin;
     if (req.body.instagram) profileFields.instagram = req.body.instagram;
