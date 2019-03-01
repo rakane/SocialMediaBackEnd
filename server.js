@@ -12,6 +12,7 @@ const keys = require('./config/keys');
 
 const app = express();
 
+// CORS Config
 app.use(cors());
 
 //Cloudinary Config
@@ -25,6 +26,7 @@ cloudinary.config({
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 
+//DB key
 const db = keys.MongoURI;
 
 // Connect to MongoDB
@@ -44,4 +46,5 @@ app.use('/api/users', users);
 app.use('/api/posts', posts);
 const port = process.env.PORT || 5000;
 
+// Open on port
 app.listen(port, () => console.log(`Server running on ${port}...`));

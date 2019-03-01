@@ -10,6 +10,7 @@ const formData = require('express-form-data');
 
 const router = express.Router();
 
+// Form Data Middleware
 router.use(formData.parse());
 
 //Cloudinary Config
@@ -26,6 +27,7 @@ const User = require('../../models/User');
 const validateRegistrationInput = require('../../validation/register');
 const validateLoginInput = require('../../validation/login');
 
+// Test Route
 router.get('/test', (req, res) => {
   res.json({ msg: 'Users works' });
 });
@@ -36,20 +38,26 @@ router.get('/test', (req, res) => {
 router.post('/register', (req, res) => {
   const { errors, isValid } = validateRegistrationInput(req.body);
 
+  // Check if valid
   if (!isValid) {
     return res.status(400).json(errors);
   }
 
+  // Find if email is already registered
   User.findOne({ email: req.body.email }).then(user => {
+    // If mongoose finds a user with that email already registered
     if (user) {
       errors.email = 'Email already exists';
       return res.status(400).json(errors);
     } else {
+      // Find if handle is already registered
       User.findOne({ handle: req.body.handle }).then(user => {
+        // If mongoose finds a user with that handle already registered
         if (user) {
           errors.handle = 'Handle already exists';
           return res.status(400).json(errors);
         }
+        // Create new user object
         const newUser = new User({
           name: req.body.name,
           handle: req.body.handle,
@@ -65,6 +73,7 @@ router.post('/register', (req, res) => {
           instagram: req.body.instagram
         });
 
+        //Encrypt password
         bcrypt.genSalt(10, (err, salt) => {
           bcrypt.hash(newUser.password, salt, (err, hash) => {
             if (err) throw err;
@@ -75,6 +84,8 @@ router.post('/register', (req, res) => {
               .catch(error => console.log(error));
           });
         });
+
+        // Send request to email server to send welcome email
         /*
         axios
           .post('http://localhost:8000/send-welcome', {
@@ -96,6 +107,7 @@ router.post('/upload-image', (req, res) => {
   let uploadFile = req.files.file;
   let fileName = req.files.file.name;
 
+  // If there is an upload file, upload to cloudinary at path profile/handle
   if (uploadFile !== undefined) {
     cloudinary.v2.uploader.upload(
       uploadFile.path,
@@ -139,7 +151,7 @@ router.post('/login', (req, res) => {
       return res.status(400).json(errors);
     }
 
-    //Check password
+    // Check password
     bcrypt.compare(password, user.password).then(isMatch => {
       if (isMatch) {
         // User matched, Create JWT payload
@@ -175,6 +187,7 @@ router.get(
   '/current',
   passport.authenticate('jwt', { session: false }),
   (req, res) => {
+    // Find user from auth token
     User.findOne({ handle: req.user.handle })
       .then(user => {
         if (!user) {
@@ -192,6 +205,7 @@ router.get(
 // @access  Public
 router.get('/handle/:handle', (req, res) => {
   const errors = {};
+  // Find user by handle param
   User.findOne({ handle: req.params.handle })
     .then(user => {
       if (!user) {
@@ -211,6 +225,7 @@ router.post(
   passport.authenticate('jwt', { session: false }),
   (req, res) => {
     const profileFields = {};
+    // If profile field exists from request, set to profile field
     if (req.body.website) profileFields.website = req.body.website;
     if (req.body.location) profileFields.location = req.body.location;
     if (req.body.bio) profileFields.bio = req.body.bio;
@@ -219,6 +234,7 @@ router.post(
     if (req.body.linkedin) profileFields.linkedin = req.body.linkedin;
     if (req.body.instagram) profileFields.instagram = req.body.instagram;
 
+    // Check to see if user exists
     User.findOne({ handle: req.user.handle }).then(user => {
       if (user) {
         // Update Profile
@@ -232,7 +248,7 @@ router.post(
   }
 );
 
-// @route   POST api/users/follow/
+// @route   POST api/users/follow
 // @desc    Follow user
 // @access  Private
 router.post(
@@ -246,21 +262,21 @@ router.post(
           handle: req.body.handle,
           name: req.body.name
         };
-        // Add to following
+        // Add to following array
         authUser.following.unshift(newFollowing);
         // Save
         authUser.save().then(authUser => res.json(authUser));
       })
       .catch(err => res.status(400).json(err));
 
-    //Find user to follow
+    // Find user to follow
     User.findOne({ handle: req.body.handle })
       .then(targetUser => {
         const newFollower = {
           handle: req.user.handle,
           name: req.user.name
         };
-        // Add auth user to followers of target user
+        // Add auth user to followers array of target user
         targetUser.followers.unshift(newFollower);
         // Save
         targetUser.save().then(targetUser => console.log(targetUser));
@@ -287,6 +303,7 @@ router.post(
         // Splice comment out of array
         authUser.following.splice(removeIndex, 1);
 
+        // Save
         authUser.save().then(user => res.json(user));
       })
       .catch(err => res.status(400).json(err));

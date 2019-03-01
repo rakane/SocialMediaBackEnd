@@ -16,8 +16,10 @@ cloudinary.config({
   api_secret: keys.CloudinaryAPISecret
 });
 
+// Load validation
 const validatePostInput = require('../../validation/post');
 
+// Load db models
 const Post = require('../../models/Post');
 const User = require('../../models/User');
 
@@ -30,6 +32,7 @@ router.post(
   (req, res) => {
     const { errors, isValid } = validatePostInput(req.body);
 
+    // Check validation
     if (!isValid) {
       return res.status(400).json(errors);
     }
@@ -37,6 +40,7 @@ router.post(
     let uploadFile;
     let fileName;
 
+    // if there is a file, upload to Cloudinary
     if (req.files !== undefined) {
       uploadFile = req.files.file;
       fileName = req.files.file.name;
@@ -57,6 +61,7 @@ router.post(
       );
     }
 
+    // Create Post object
     const newPost = new Post({
       text: req.body.text,
       media: fileName,
@@ -66,6 +71,7 @@ router.post(
       }
     });
 
+    // Save to db
     newPost
       .save()
       .then(post => res.json(post))
@@ -77,6 +83,7 @@ router.post(
 // @desc    Get post by ID
 // @access  Public
 router.get('/:id', (req, res) => {
+  // Find user by id param
   Post.findById(req.params.id)
     .then(post => res.json(post))
     .catch(err =>
@@ -88,10 +95,12 @@ router.get('/:id', (req, res) => {
 // @desc    Delete post
 // @access  Private
 router.delete(
-  '/:handle/:id',
+  '/:id',
   passport.authenticate('jwt', { session: false }),
   (req, res) => {
+    // Find user
     User.findOne({ handle: req.user.handle }).then(user => {
+      // Find post by id
       Post.findById(req.params.id)
         .then(post => {
           // Check for post owner
@@ -115,7 +124,9 @@ router.post(
   '/like/:id',
   passport.authenticate('jwt', { session: false }),
   (req, res) => {
+    // Find user by handle
     User.findOne({ handle: req.user.handle }).then(user => {
+      // Find post by id
       Post.findById(req.params.id)
         .then(post => {
           if (
@@ -128,6 +139,7 @@ router.post(
               .json({ alreadyliked: 'User already liked this post' });
           }
 
+          // Add auth user to post likes and save
           post.likes.unshift({ handle: req.user.handle, name: req.user.name });
           post.save().then(post => res.json(post));
         })
@@ -143,7 +155,9 @@ router.post(
   '/unlike/:id',
   passport.authenticate('jwt', { session: false }),
   (req, res) => {
+    // Find user by handle
     User.findOne({ handle: req.user.handle }).then(user => {
+      // Find post by id
       Post.findById(req.params.id)
         .then(post => {
           if (
@@ -156,12 +170,15 @@ router.post(
               .json({ notliked: "You haven't liked this post" });
           }
 
+          //Find index of like to remove
           const removeIndex = post.likes
             .map(item => item.handle.toString())
             .indexOf(req.user.handle);
 
+          // Remove like
           post.likes.splice(removeIndex);
 
+          // Save
           post.save().then(post => res.json(post));
         })
         .catch(err => res.status(404).json({ postnotfound: 'No post found' }));
@@ -178,10 +195,12 @@ router.post(
   (req, res) => {
     const { errors, isValid } = validatePostInput(req.body);
 
+    // Check validation
     if (!isValid) {
       return res.status(400).json(errors);
     }
 
+    // Find post by id
     Post.findById(req.params.id)
       .then(post => {
         const newComment = {
@@ -207,9 +226,11 @@ router.delete(
   '/comment/:id/:comment_id',
   passport.authenticate('jwt', { session: false }),
   (req, res) => {
+    // Find post by id
     Post.findById(req.params.id)
       .then(post => {
         if (
+          // Check if comment exists
           post.comments.filter(
             comment => comment._id.toString() === req.params.comment_id
           ).length === 0
@@ -237,6 +258,7 @@ router.delete(
 // @desc    Get all posts of a user
 // @access  Public
 router.get('/:handle/posts', (req, res) => {
+  // Find user by handle
   Post.find({ 'user.handle': req.params.handle })
     .then(posts => res.json(posts))
     .catch(err => res.status(400).json(err));
@@ -249,6 +271,7 @@ router.get(
   '/current/all',
   passport.authenticate('jwt', { session: false }),
   (req, res) => {
+    // Find current user
     User.findOne({ handle: req.user.handle }).then(user => {
       const { following } = user;
       const handles = [];
@@ -257,6 +280,7 @@ router.get(
       });
       handles.unshift(req.user.handle);
 
+      // Find all posts from handle
       Post.find({ 'user.handle': { $in: handles } })
         .then(posts => res.json(posts))
         .catch(err => res.status(400).json(err));
